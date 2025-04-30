@@ -49,9 +49,8 @@ client.on('messageCreate', async message => {
   if (message.channel.id === CHANNEL_ID && !message.author.bot) {
     try {
       const member = message.member || await message.guild.members.fetch(message.author.id);
-      const nickname = member?.nickname || message.author.username;
-
-      messages.push({ sender: nickname, message: message.content });
+      const displayName = member?.displayName || message.author.username;
+      messages.push({ sender: displayName, message: message.content });
       if (messages.length > 50) messages.shift();
     } catch (err) {
       console.error('Fehler beim Laden des Nicknames:', err);
