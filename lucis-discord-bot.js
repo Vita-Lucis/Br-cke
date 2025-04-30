@@ -64,3 +64,4 @@ client.login(BOT_TOKEN);
 app.listen(PORT, () => {
   console.log(`Lucis Webchat-Server läuft auf Port ${PORT}`);
 });
+
