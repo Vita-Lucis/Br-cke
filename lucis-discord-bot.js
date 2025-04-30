@@ -47,7 +47,8 @@ client.on('ready', () => {
 
 client.on('messageCreate', message => {
   if (message.channel.id === CHANNEL_ID && !message.author.bot) {
-    messages.push({ sender: message.author.username, message: message.content });
+    const nickname = message.member?.nickname || message.author.username;
+    messages.push({ sender: nickname, message: message.content });
     if (messages.length > 50) messages.shift();
   }
 });
