@@ -18,24 +18,19 @@ app.use(bodyParser.json());
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
-  console.log('🌍 Neue Webnachricht:', JSON.stringify(req.body, null, 2));
 
   if (sender === 'Anonym') {
     try {
       const channel = client.channels.cache.get(CHANNEL_ID);
       await channel.send(message); // Nur die Nachricht senden
-      console.log('✅ Gesendet an Discord:', message);
     } catch (err) {
-      console.error('❌ Discord Send Error:', err);
+      console.error('Discord Send Error:', err);
     }
   }
 
   if (!messages.find(msg => msg.id === id)) {
-    console.log('💾 Speichere neue Nachricht:', id);
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
-  } else {
-    console.log('⚠️ Nachricht bereits gespeichert, ID:', id);
   }
 
   res.sendStatus(200);
@@ -56,7 +51,7 @@ const client = new Client({
 });
 
 client.on('ready', () => {
-  console.log(`✅ Lucis Bot aktiviert als ${client.user.tag}`);
+  console.log(`Lucis Bot aktiviert als ${client.user.tag}`);
 });
 
 const emojiMap = {
@@ -97,9 +92,6 @@ client.on('messageCreate', async (message) => {
     id
   };
 
-  console.log('📨 Neue Nachricht auf Discord:', message.content);
-  console.log('📬 Sende an Webchat:', JSON.stringify(payload, null, 2));
-
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -107,16 +99,13 @@ client.on('messageCreate', async (message) => {
   });
 
   if (!messages.find(msg => msg.id === id)) {
-    console.log('💾 Speichere Discord Nachricht lokal:', id);
     messages.push(payload);
     if (messages.length > 50) messages.shift();
-  } else {
-    console.log('⚠️ Discord Nachricht bereits im Cache:', id);
   }
 });
 
 client.login(BOT_TOKEN);
 
 app.listen(PORT, () => {
-  console.log(`🌐 Lucis Webchat-Server läuft auf Port ${PORT}`);
+  console.log(`Lucis Webchat-Server läuft auf Port ${PORT}`);
 });
