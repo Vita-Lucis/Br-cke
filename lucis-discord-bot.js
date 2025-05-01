@@ -45,17 +45,47 @@ client.on('ready', () => {
   console.log(`Lucis Bot aktiviert als ${client.user.tag}`);
 });
 
-client.on('messageCreate', async message => {
-  if (message.channel.id === CHANNEL_ID && !message.author.bot) {
-    try {
-      const member = message.member || await message.guild.members.fetch(message.author.id);
-      const displayName = member?.displayName || message.author.username;
-      messages.push({ sender: displayName, message: message.content });
-      if (messages.length > 50) messages.shift();
-    } catch (err) {
-      console.error('Fehler beim Laden des Nicknames:', err);
+// Emoji-Farben Mapping
+const emojiMap = {
+  '💗': '#ff69b4',
+  '❤️': '#e74c3c',
+  '💛': '#f1c40f',
+  '💚': '#2ecc71',
+  '💙': '#3498db',
+  '🤍': '#cccccc',
+  '🖤': '#2f2f2f'
+};
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  const member = message.member;
+  const roles = member?.roles?.cache || [];
+
+  const heartPriority = ['💗', '❤️', '💛', '💚', '💙', '🤍', '🖤'];
+  let roleEmoji = '🖤';
+
+  for (const emoji of heartPriority) {
+    const hasRole = [...roles.values()].some(role => role.name.includes(emoji));
+    if (hasRole) {
+      roleEmoji = emoji;
+      break;
     }
   }
+  const roleColor = emojiMap[roleEmoji];
+
+  const payload = {
+    sender: message.member.displayName,
+    role: roleEmoji,
+    roleColor: roleColor,
+    message: message.content
+  };
+
+  await fetch('https://br-cke.onrender.com/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
 });
 
 
