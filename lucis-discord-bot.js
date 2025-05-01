@@ -65,7 +65,7 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.webhookId) return;
+  if (message.author.id === client.user.id) return;
 
   const member = message.member;
   const roles = member?.roles?.cache || [];
