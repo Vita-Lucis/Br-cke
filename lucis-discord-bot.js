@@ -65,7 +65,7 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.channel.id !== CHANNEL_ID) return;
+  if (message.author.bot || message.webhookId) return;
 
   const member = message.member;
   const roles = member?.roles?.cache || [];
