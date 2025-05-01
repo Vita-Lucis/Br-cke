@@ -18,20 +18,20 @@ app.use(bodyParser.json());
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
-  // Wenn es "Anonym" ist, stammt es von der Website → sende an Discord
-  if (sender === 'Anonym') {
-    try {
-      const channel = client.channels.cache.get(CHANNEL_ID);
-      await channel.send(`${role || '🖤'} ${sender}: ${message}`);
-    } catch (err) {
-      console.error('Discord Send Error:', err);
-    }
-  }
-
-  // In allen Fällen lokal speichern – nur, wenn ID noch nicht bekannt
+  // Nur speichern, wenn ID nicht bekannt ist
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
+
+    // Wenn es "Anonym" ist, stammt es von der Website → sende an Discord
+    if (sender === 'Anonym') {
+      try {
+        const channel = client.channels.cache.get(CHANNEL_ID);
+        await channel.send(`${role || '🖤'} ${sender}: ${message}`);
+      } catch (err) {
+        console.error('Discord Send Error:', err);
+      }
+    }
   }
 
   res.sendStatus(200);
@@ -69,11 +69,8 @@ const emojiMap = {
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id) return;
 
-  console.log('🪵 Neue Nachricht auf Discord:', message.content);
-
   const member = message.member;
   const roles = member?.roles?.cache || [];
-
   const heartPriority = ['💗', '❤️', '💛', '💚', '💙', '🤍', '🖤'];
   let roleEmoji = '🖤';
 
@@ -84,33 +81,33 @@ client.on('messageCreate', async (message) => {
       break;
     }
   }
-
   const roleColor = emojiMap[roleEmoji];
-  const id = `${message.id}-${message.createdTimestamp}`;
+  const id = `${message.id}`; // Discord-Nachrichten-ID als eindeutige ID nutzen
 
-  const payload = {
-    sender: message.member.displayName,
-    role: roleEmoji,
-    roleColor: roleColor,
-    message: message.content,
-    id
-  };
-
-  console.log('📤 Sende an Webchat:', payload);
-
-  await fetch('https://br-cke.onrender.com/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
+  // Nur an Webchat senden, wenn ID noch nicht lokal bekannt ist
   if (!messages.find(msg => msg.id === id)) {
+    const payload = {
+      sender: message.member.displayName,
+      role: roleEmoji,
+      roleColor,
+      message: message.content,
+      id
+    };
+
+    try {
+      await fetch('https://br-cke.onrender.com/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.error('Fehler beim Senden an Webchat:', err);
+    }
+
     messages.push(payload);
     if (messages.length > 50) messages.shift();
   }
 });
-
-
 
 client.login(BOT_TOKEN);
 
