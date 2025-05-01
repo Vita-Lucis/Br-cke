@@ -16,15 +16,23 @@ app.use(bodyParser.json());
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
-  const { sender, message } = req.body;
-  try {
-    const channel = client.channels.cache.get(CHANNEL_ID);
-    await channel.send(`👤 ${sender}: ${message}`);
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('Send error:', err);
-    res.sendStatus(500);
+  const { sender, message, role, roleColor } = req.body;
+
+  // Wenn es "Anonym" ist, stammt es von der Website → sende an Discord
+  if (sender === 'Anonym') {
+    try {
+      const channel = client.channels.cache.get(CHANNEL_ID);
+      await channel.send(`${role || '🖤'} ${sender}: ${message}`);
+    } catch (err) {
+      console.error('Discord Send Error:', err);
+    }
   }
+
+  // In allen Fällen lokal speichern
+  messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f' });
+  if (messages.length > 50) messages.shift();
+
+  res.sendStatus(200);
 });
 
 // Provide stored messages to frontend
@@ -86,6 +94,10 @@ client.on('messageCreate', async (message) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+
+  // 🧠 Hier speichern:
+  messages.push(payload);
+  if (messages.length > 50) messages.shift();
 });
 
 
