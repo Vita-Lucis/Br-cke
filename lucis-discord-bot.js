@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
+const { fetch } = require('undici');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
@@ -70,7 +70,7 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.webhookId) return;
+  if (message.author.id === client.user.id || message.webhookId) return;
 
   const member = message.member;
   const roles = member?.roles?.cache || [];
@@ -87,7 +87,7 @@ client.on('messageCreate', async (message) => {
   }
 
   const roleColor = emojiMap[roleEmoji];
-  const id = message.id; // Discord-eigene ID verwenden
+  const id = `discord-${message.id}`;
 
   const payload = {
     sender: message.member.displayName,
