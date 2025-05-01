@@ -67,8 +67,9 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.webhookId) return;
+  if (message.author.id === client.user.id) return;
 
+  console.log('📥 Neue Nachricht:', message.content);
 
   const member = message.member;
   const roles = member?.roles?.cache || [];
@@ -84,7 +85,7 @@ client.on('messageCreate', async (message) => {
     }
   }
   const roleColor = emojiMap[roleEmoji];
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `${message.id}`; // ← gleiche ID wie Discord Message-ID verwenden
 
   const payload = {
     sender: message.member.displayName,
@@ -94,18 +95,19 @@ client.on('messageCreate', async (message) => {
     id
   };
 
-  await fetch('https://br-cke.onrender.com/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  console.log('🚀 Sende an Webchat:', payload);
 
-  // 🧠 Lokaler Cache – nur wenn ID neu ist
-  if (!messages.find(msg => msg.id === id)) {
-    messages.push(payload);
-    if (messages.length > 50) messages.shift();
+  try {
+    await fetch('https://br-cke.onrender.com/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('❌ Fehler beim Senden an Webchat:', err);
   }
 });
+
 
 client.login(BOT_TOKEN);
 
