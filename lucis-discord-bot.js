@@ -23,8 +23,8 @@ app.post('/send', async (req, res) => {
   if (sender === 'Anonym') {
     try {
       const channel = client.channels.cache.get(CHANNEL_ID);
-      await channel.send(`${role || '🖤'} ${sender}: ${message}`);
-      console.log('✅ Gesendet an Discord:', `${role || '🖤'} ${sender}: ${message}`);
+      await channel.send(message); // Nur die Nachricht senden
+      console.log('✅ Gesendet an Discord:', message);
     } catch (err) {
       console.error('❌ Discord Send Error:', err);
     }
