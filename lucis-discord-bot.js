@@ -1,4 +1,3 @@
-// lucis-discord-bot.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -10,7 +9,6 @@ const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-let messages = [];
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -28,17 +26,13 @@ app.post('/send', async (req, res) => {
     }
   }
 
-  if (!messages.find(msg => msg.id === id)) {
-    messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
-    if (messages.length > 50) messages.shift();
-  }
-
   res.sendStatus(200);
 });
 
 // Provide stored messages to frontend
+// Keine Speicherung auf dem Server, keine Nachrichten hier
 app.get('/messages', (req, res) => {
-  res.json(messages);
+  res.json([]); // Kein Inhalt, da wir nichts auf dem Server speichern
 });
 
 // Discord bot setup
@@ -92,16 +86,12 @@ client.on('messageCreate', async (message) => {
     id
   };
 
+  // Nur Nachricht senden, keine Speicherung auf dem Server
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-
-  if (!messages.find(msg => msg.id === id)) {
-    messages.push(payload);
-    if (messages.length > 50) messages.shift();
-  }
 });
 
 client.login(BOT_TOKEN);
