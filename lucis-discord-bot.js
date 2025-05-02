@@ -26,13 +26,12 @@ app.post('/send', async (req, res) => {
     }
   }
 
-  res.sendStatus(200);
+  res.sendStatus(200); // Status 200 zurücksenden, um den Empfang zu bestätigen
 });
 
-// Provide stored messages to frontend
-// Keine Speicherung auf dem Server, keine Nachrichten hier
+// Keine Speicherung der Nachrichten mehr
 app.get('/messages', (req, res) => {
-  res.json([]); // Kein Inhalt, da wir nichts auf dem Server speichern
+  res.json([]); // Gibt jetzt nichts mehr zurück, keine Speicherung auf dem Server
 });
 
 // Discord bot setup
@@ -86,7 +85,7 @@ client.on('messageCreate', async (message) => {
     id
   };
 
-  // Nur Nachricht senden, keine Speicherung auf dem Server
+  // Nachricht an den Frontend-Client senden
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
