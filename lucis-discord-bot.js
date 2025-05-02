@@ -31,7 +31,7 @@ app.post('/send', async (req, res) => {
 
 // Keine Speicherung der Nachrichten mehr
 app.get('/messages', (req, res) => {
-  res.json([]); // Gibt jetzt nichts mehr zurück, keine Speicherung auf dem Server
+  res.json([]); // Gibt jetzt immer ein leeres Array zurück, keine Speicherung auf dem Server
 });
 
 // Discord bot setup
