@@ -1,3 +1,4 @@
+// lucis-discord-bot.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -9,12 +10,10 @@ const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+let messages = [];
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// Array zur Speicherung der Nachrichten
-let messages = [];
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
@@ -29,24 +28,17 @@ app.post('/send', async (req, res) => {
     }
   }
 
-  // Nachricht in das Array einfügen
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
   }
 
-  res.sendStatus(200); // Status 200 zurücksenden, um den Empfang zu bestätigen
+  res.sendStatus(200);
 });
 
 // Provide stored messages to frontend
 app.get('/messages', (req, res) => {
-  res.json(messages); // Gibt die gespeicherten Nachrichten zurück
-});
-
-// Route zum Löschen aller Nachrichten
-app.post('/clearMessages', (req, res) => {
-  messages = []; // Alle Nachrichten löschen
-  res.sendStatus(200); // Bestätigen, dass die Nachrichten gelöscht wurden
+  res.json(messages);
 });
 
 // Discord bot setup
@@ -72,7 +64,6 @@ const emojiMap = {
   '🖤': '#2f2f2f'
 };
 
-// Nachrichten vom Discord-Server empfangen und an den Frontend-Client senden
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id || message.webhookId) return;
 
@@ -101,12 +92,16 @@ client.on('messageCreate', async (message) => {
     id
   };
 
-  // Nachricht an den Frontend-Client senden
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+
+  if (!messages.find(msg => msg.id === id)) {
+    messages.push(payload);
+    if (messages.length > 50) messages.shift();
+  }
 });
 
 client.login(BOT_TOKEN);
