@@ -26,12 +26,13 @@ app.post('/send', async (req, res) => {
     }
   }
 
+  // Keine Speicherung der Nachrichten
   res.sendStatus(200); // Status 200 zurücksenden, um den Empfang zu bestätigen
 });
 
-// Keine Speicherung der Nachrichten mehr
+// Keine gespeicherten Nachrichten, gibt nur leeres Array zurück
 app.get('/messages', (req, res) => {
-  res.json([]); // Gibt jetzt immer ein leeres Array zurück, keine Speicherung auf dem Server
+  res.json([]); // Gibt ein leeres Array zurück, da keine Nachrichten gespeichert werden
 });
 
 // Discord bot setup
@@ -57,6 +58,7 @@ const emojiMap = {
   '🖤': '#2f2f2f'
 };
 
+// Nachrichten vom Discord-Server empfangen und an den Frontend-Client senden
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id || message.webhookId) return;
 
