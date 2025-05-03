@@ -148,7 +148,6 @@ client.on('messageCreate', async (message) => {
     messages.push(payload);
     if (messages.length > 50) messages.shift();
   }
-});
 
 client.login(BOT_TOKEN);
 
