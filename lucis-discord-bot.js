@@ -1,3 +1,4 @@
+// lucis-discord-bot.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -10,65 +11,27 @@ const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
 const app = express();
 const PORT = process.env.PORT || 3000;
 let messages = [];
-let userMessageCount = {}; // Zählt, wie oft der Benutzer dieselbe Nachricht gesendet hat
-let userTimeout = {};      // Speichert die Timeout-Informationen für Benutzer
-const TIMEOUT_DURATION = 60000; // Timeout-Dauer in Millisekunden (1 Minute)
-const SPAM_THRESHOLD = 3; // Anzahl der Wiederholungen, um den Benutzer zu timeouten
-const LINK_REGEX = /https?:\/\/[^\s]+/; // RegEx, um HTTP/HTTPS-Links zu erkennen
+
+const userMessageCounts = new Map();
+const timeoutDuration = 30000;  // 30 Sekunden Timeout für identische Nachrichten
+const externalLinkRegex = /https?:\/\/(?!discord\.com)([^\s]+)/; // Verhindert Links zu externen Seiten
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// Funktion zur Überprüfung und zum Setzen des Timeout
-function checkSpam(sender, message) {
-  const currentTime = Date.now();
-  if (!userMessageCount[sender]) {
-    userMessageCount[sender] = {}; // Initialisiere den Zähler, falls er noch nicht existiert
-  }
-
-  if (!userMessageCount[sender][message]) {
-    userMessageCount[sender][message] = 0; // Initialisiere den Zähler für die Nachricht
-  }
-
-  userMessageCount[sender][message] += 1; // Erhöhe den Zähler für die Nachricht
-
-  if (userMessageCount[sender][message] >= SPAM_THRESHOLD) {
-    userTimeout[sender] = currentTime; // Sperre den Benutzer
-    userMessageCount[sender] = {}; // Setze die Zählung zurück
-    return true; // Benutzer wurde gesperrt
-  }
-
-  return false; // Keine Sperre
-}
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
-  // Überprüfen, ob die Nachricht einen externen Link enthält
-  if (LINK_REGEX.test(message)) {
-    return res.status(400).send('Externe Links sind verboten.'); // Nachricht blockieren, wenn ein Link enthalten ist
+  if (sender === 'Anonym') {
+    try {
+      const channel = client.channels.cache.get(CHANNEL_ID);
+      await channel.send(message); // Nur die Nachricht senden
+    } catch (err) {
+      console.error('Discord Send Error:', err);
+    }
   }
 
-  // Wenn der Benutzer gesperrt ist, verhindern wir, dass er eine Nachricht sendet
-  if (userTimeout[sender] && Date.now() - userTimeout[sender] < TIMEOUT_DURATION) {
-    return res.status(403).send('Du bist für 1 Minute gesperrt.');
-  }
-
-  // Überprüfen, ob der Benutzer die gleiche Nachricht zu oft gesendet hat
-  if (checkSpam(sender, message)) {
-    return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
-  }
-
-  try {
-    const channel = client.channels.cache.get(CHANNEL_ID);
-    // Sende die Nachricht an Discord
-    await channel.send(message); // Nur die Nachricht senden
-  } catch (err) {
-    console.error('Discord Send Error:', err);
-  }
-
-  // Speichern der Nachricht und ihrer ID
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
@@ -108,9 +71,41 @@ const emojiMap = {
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id || message.webhookId) return;
 
-  // Wir wollen keine Nachrichten, die direkt von Discord zum Webchat gehen. Wir speichern und senden nur Nachrichten von der Website.
-  if (!message.content.includes("http://lucis.family")) return; // Prüfe, ob die Nachricht von der Website kam. Anpassen nach Bedarf.
+  // Prüfen, ob die Nachricht externe Links enthält
+  if (externalLinkRegex.test(message.content)) {
+    await message.delete();  // Lösche die Nachricht
+    await message.reply("Externe Links sind nicht erlaubt.");  // Sende eine Nachricht als Antwort
+    return;
+  }
+
+  // Logik für identische Nachrichten innerhalb von 30 Sekunden
+  const userId = message.author.id;
+  const messageContent = message.content;
   
+  if (!userMessageCounts.has(userId)) {
+    userMessageCounts.set(userId, []);
+  }
+
+  const userMessages = userMessageCounts.get(userId);
+  const currentTime = Date.now();
+
+  // Füge die Nachricht zur Liste hinzu
+  userMessages.push({ content: messageContent, timestamp: currentTime });
+
+  // Entferne Nachrichten, die älter als 30 Sekunden sind
+  while (userMessages[0] && currentTime - userMessages[0].timestamp > timeoutDuration) {
+    userMessages.shift();
+  }
+
+  // Überprüfen, ob der Benutzer 4 identische Nachrichten in den letzten 30 Sekunden gesendet hat
+  const identicalMessages = userMessages.filter(msg => msg.content === messageContent);
+  if (identicalMessages.length >= 4) {
+    await message.delete();  // Lösche die Nachricht
+    await message.reply("Du hast zu viele identische Nachrichten gesendet. Bitte warte 30 Sekunden.");
+    return;
+  }
+
+  // Der restliche Code bleibt unverändert
   const member = message.member;
   const roles = member?.roles?.cache || [];
 
@@ -136,8 +131,6 @@ client.on('messageCreate', async (message) => {
     id
   };
 
-  // Wenn die Nachricht von Discord zum Webchat kommt, senden wir sie nicht zurück in den Discord-Channel.
-  if (message.content.includes("http://lucis.family")) {
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
