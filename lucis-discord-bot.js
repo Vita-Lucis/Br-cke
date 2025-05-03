@@ -49,13 +49,13 @@ app.post('/send', async (req, res) => {
 
       if (messageCount[message] >= SPAM_THRESHOLD) {
         // Timeout den Benutzer für 1 Minute, wenn 3 gleiche Nachrichten gesendet wurden
-        userTimeout[sender] = currentTime;
+        userTimeout[sender] = currentTime; // Setze den Timeout
         userMessageCount[sender] = {}; // Zurücksetzen der Zählung
         return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
       }
     } else {
       // Zurücksetzen der Zählung, wenn die Nachricht nicht innerhalb des Zeitfensters wiederholt wurde
-      userMessageCount[sender] = { [message]: 1 };
+      userMessageCount[sender] = { [message]: 1 }; // Setze die Zählung für diese Nachricht zurück
     }
 
     // Speichern des Zeitstempels der letzten Nachricht
@@ -64,6 +64,20 @@ app.post('/send', async (req, res) => {
 
   try {
     const channel = client.channels.cache.get(CHANNEL_ID);
+    // Sende die Nachricht an Discord
+    await channel.send(message); // Nur die Nachricht senden
+  } catch (err) {
+    console.error('Discord Send Error:', err);
+  }
+
+  // Speichern der Nachricht und ihrer ID
+  if (!messages.find(msg => msg.id === id)) {
+    messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
+    if (messages.length > 50) messages.shift();
+  }
+
+  res.sendStatus(200);
+});
 
    
 
