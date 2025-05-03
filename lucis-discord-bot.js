@@ -133,6 +133,8 @@ client.on('messageCreate', async (message) => {
     id
   };
 
+  // Wenn die Nachricht von Discord zum Webchat kommt, senden wir sie nicht zurück in den Discord-Channel.
+  if (message.content.includes("http://lucis.family")) {
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
