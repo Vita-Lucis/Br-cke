@@ -14,24 +14,28 @@ let messages = [];
 
 const userMessageCounts = new Map();
 const timeoutDuration = 30000;  // 30 Sekunden Timeout für identische Nachrichten
-const externalLinkRegex = /https?:\/\/(?!discord\.com)([^\s]+)/; // Verhindert Links zu externen Seiten
 
+// RegEx zum Blockieren von externen Links (mit Ausnahme von discord.com)
+const externalLinkRegex = /(https?:\/\/)(?!discord\.com)[^\s]+/;
+
+// Middleware für das Parsen der JSON-Daten
 app.use(cors());
 app.use(bodyParser.json());
 
-// Send message from website to Discord
+// Endpoint für das Senden von Nachrichten vom Webchat an Discord
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
   if (sender === 'Anonym') {
     try {
       const channel = client.channels.cache.get(CHANNEL_ID);
-      await channel.send(message); // Nur die Nachricht senden
+      await channel.send(message); // Nachricht an Discord senden
     } catch (err) {
       console.error('Discord Send Error:', err);
     }
   }
 
+  // Speichern der Nachrichten
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
@@ -40,12 +44,12 @@ app.post('/send', async (req, res) => {
   res.sendStatus(200);
 });
 
-// Provide stored messages to frontend
+// Endpoint für das Abrufen der gespeicherten Nachrichten
 app.get('/messages', (req, res) => {
   res.json(messages);
 });
 
-// Discord bot setup
+// Discord Bot Setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -68,20 +72,21 @@ const emojiMap = {
   '🖤': '#2f2f2f'
 };
 
+// Event, wenn eine Nachricht im Discord-Channel gepostet wird
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id || message.webhookId) return;
 
-  // Prüfen, ob die Nachricht externe Links enthält
+  // Prüfung auf externe Links (mit Ausnahme von discord.com)
   if (externalLinkRegex.test(message.content)) {
     await message.delete();  // Lösche die Nachricht
-    await message.reply("Externe Links sind nicht erlaubt.");  // Sende eine Nachricht als Antwort
+    await message.reply("Externe Links sind nicht erlaubt.");  // Antwort auf den Benutzer
     return;
   }
 
   // Logik für identische Nachrichten innerhalb von 30 Sekunden
   const userId = message.author.id;
   const messageContent = message.content;
-  
+
   if (!userMessageCounts.has(userId)) {
     userMessageCounts.set(userId, []);
   }
@@ -105,7 +110,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Der restliche Code bleibt unverändert
+  // Weiterverarbeiten der Nachricht und Senden an den Webchat
   const member = message.member;
   const roles = member?.roles?.cache || [];
 
@@ -116,35 +121,3 @@ client.on('messageCreate', async (message) => {
     const hasRole = [...roles.values()].some(role => role.name.includes(emoji));
     if (hasRole) {
       roleEmoji = emoji;
-      break;
-    }
-  }
-
-  const roleColor = emojiMap[roleEmoji];
-  const id = `discord-${message.id}`;
-
-  const payload = {
-    sender: message.member.displayName,
-    role: roleEmoji,
-    roleColor: roleColor,
-    message: message.content,
-    id
-  };
-
-  await fetch('https://br-cke.onrender.com/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  if (!messages.find(msg => msg.id === id)) {
-    messages.push(payload);
-    if (messages.length > 50) messages.shift();
-  }
-});
-
-client.login(BOT_TOKEN);
-
-app.listen(PORT, () => {
-  console.log(`Lucis Webchat-Server läuft auf Port ${PORT}`);
-});
