@@ -17,6 +17,7 @@ let userTimeout = {};      // Speichert die Timeout-Informationen für Benutzer
 const TIMEOUT_DURATION = 60000; // Timeout-Dauer in Millisekunden (1 Minute)
 const SPAM_THRESHOLD = 3; // Anzahl der Wiederholungen, um den Benutzer zu timeouten
 const MESSAGE_TIMEOUT = 3000; // Zeitspanne, in der die Nachricht 3x gesendet werden muss (3 Sekunden)
+const LINK_REGEX = /https?:\/\/[^\s]+/; // RegEx, um HTTP/HTTPS-Links zu erkennen
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -28,39 +29,10 @@ const SPAM_TIMEOUT = 2000; // in Millisekunden
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
-  if (sender === 'Anonym') {
-    try {
-      const channel = client.channels.cache.get(CHANNEL_ID);
-
-      // Verhindert Spam: Überprüft, ob der Benutzer zu schnell hintereinander Nachrichten sendet
-      const currentTime = Date.now();
-      const lastTime = userLastMessageTime[sender] || 0;
-
-      if (currentTime - lastTime < SPAM_TIMEOUT) {
-        console.log(`Spam erkannt: Benutzer ${sender} hat zu schnell eine Nachricht gesendet.`);
-        return res.sendStatus(429); // HTTP 429 Too Many Requests
-      }
-
-      // Speichert die Zeit der letzten Nachricht
-      userLastMessageTime[sender] = currentTime;
-
-      // Sende die Nachricht an Discord
-      await channel.send(message); // Nur die Nachricht senden
-    } catch (err) {
-      console.error('Discord Send Error:', err);
-    }
+  // Überprüfen, ob die Nachricht einen externen Link enthält
+  if (LINK_REGEX.test(message)) {
+    return res.status(400).send('Externe Links sind verboten.'); // Nachricht blockieren, wenn ein Link enthalten ist
   }
-
-  if (!messages.find(msg => msg.id === id)) {
-    messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
-    if (messages.length > 50) messages.shift();
-  }
-
-  res.sendStatus(200);
-});
-// Send message from website to Discord
-app.post('/send', async (req, res) => {
-  const { sender, message, role, roleColor, id } = req.body;
 
   // Wenn der Benutzer gesperrt ist, verhindern wir, dass er eine Nachricht sendet
   if (userTimeout[sender] && Date.now() - userTimeout[sender] < TIMEOUT_DURATION) {
@@ -92,15 +64,27 @@ app.post('/send', async (req, res) => {
     userMessageTime[sender] = currentTime;
   }
 
-  // Wenn der Benutzer nicht gesperrt ist und die Nachricht gültig ist, senden wir sie an Discord
   try {
     const channel = client.channels.cache.get(CHANNEL_ID);
-    await channel.send(message); // Sende die Nachricht an Discord
+
+    // Verhindert Spam: Überprüft, ob der Benutzer zu schnell hintereinander Nachrichten sendet
+    const currentTime = Date.now();
+    const lastTime = userLastMessageTime[sender] || 0;
+
+    if (currentTime - lastTime < SPAM_TIMEOUT) {
+      console.log(`Spam erkannt: Benutzer ${sender} hat zu schnell eine Nachricht gesendet.`);
+      return res.sendStatus(429); // HTTP 429 Too Many Requests
+    }
+
+    // Speichert die Zeit der letzten Nachricht
+    userLastMessageTime[sender] = currentTime;
+
+    // Sende die Nachricht an Discord
+    await channel.send(message); // Nur die Nachricht senden
   } catch (err) {
     console.error('Discord Send Error:', err);
   }
 
-  // Speichern der Nachricht und ihrer ID
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
