@@ -134,6 +134,7 @@ client.on('messageCreate', async (message) => {
     roleColor: roleColor,
     message: message.content,
     id
+    reference: true
   };
 
 
