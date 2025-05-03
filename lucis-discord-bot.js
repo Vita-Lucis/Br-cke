@@ -15,8 +15,8 @@ let userLastMessageTime = {}; // Speichert die Zeit der letzten Nachricht für j
 app.use(cors());
 app.use(bodyParser.json());
 
-// Spam Timeout (z.B. 3 Sekunden)
-const SPAM_TIMEOUT = 3000; // in Millisekunden
+// Spam Timeout (z.B. 2 Sekunden)
+const SPAM_TIMEOUT = 2000; // in Millisekunden
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
