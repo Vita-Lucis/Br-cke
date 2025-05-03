@@ -133,7 +133,7 @@ client.on('messageCreate', async (message) => {
     role: roleEmoji,
     roleColor: roleColor,
     message: message.content,
-    id
+    id,
     reference: true
   };
 
