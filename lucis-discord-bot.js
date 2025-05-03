@@ -137,17 +137,19 @@ client.on('messageCreate', async (message) => {
   };
 
   // Wenn die Nachricht von Discord zum Webchat kommt, senden wir sie nicht zurück in den Discord-Channel.
-  if (message.content.includes("http://lucis.family")) {
+if (message.content.includes("http://lucis.family")) {
   await fetch('https://br-cke.onrender.com/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
-  });
+  }); // <-- Diese Klammer schließt den fetch-Block
 
+  // Speichern der Nachricht, wenn sie nicht bereits existiert
   if (!messages.find(msg => msg.id === id)) {
     messages.push(payload);
     if (messages.length > 50) messages.shift();
   }
+} // <-- Diese Klammer schließt den if-Block
 
 client.login(BOT_TOKEN);
 
