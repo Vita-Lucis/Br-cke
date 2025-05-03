@@ -45,6 +45,9 @@ function checkSpam(sender, message) {
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
+  // Protokolliere empfangene Nachricht
+  console.log(`Nachricht empfangen von ${sender}: ${message} mit ID: ${id}`);
+
   // Überprüfen, ob die Nachricht einen externen Link enthält
   if (LINK_REGEX.test(message)) {
     return res.status(400).send('Externe Links sind verboten.'); // Nachricht blockieren, wenn ein Link enthalten ist
@@ -63,7 +66,8 @@ app.post('/send', async (req, res) => {
   try {
     const channel = client.channels.cache.get(CHANNEL_ID);
     // Sende die Nachricht an Discord
-    await channel.send(message); // Nur die Nachricht senden
+    await channel.send(message);
+    console.log(`Nachricht erfolgreich an Discord gesendet: ${message}`);
   } catch (err) {
     console.error('Discord Send Error:', err);
   }
@@ -106,9 +110,13 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
+  // Ignoriere Nachrichten, die vom Bot selbst oder von Webhooks stammen
   if (message.author.id === client.user.id || message.webhookId) return;
 
-   // Verhindern, dass Nachrichten, die von einem anderen Bot oder einem Webchat stammen, verarbeitet werden
+  // Protokolliere die empfangene Nachricht
+  console.log(`Nachricht erhalten: ${message.content}`);
+
+  // Verhindern, dass Nachrichten, die von einem anderen Bot oder Webchat stammen, verarbeitet werden
   if (message.reference) return;  // Nachricht hat eine Referenz (wurde vom Webchat gesendet)
   
   const member = message.member;
@@ -137,20 +145,39 @@ client.on('messageCreate', async (message) => {
     reference: true
   };
 
+  // Protokolliere die Nachricht, bevor sie gesendet wird
+  console.log(`Nachricht wird gesendet: ${JSON.stringify(payload)}`);
 
-  await fetch('https://br-cke.onrender.com/send', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload)
-}); // <-- Diese Klammer schließt den fetch-Block
+  // Verhindern, dass eine Nachricht wiederholt gesendet wird
+  const existingMessage = messages.find(msg => msg.id === id);
+  if (existingMessage) {
+    console.log(`Nachricht mit ID ${id} wurde bereits gesendet.`);
+    return;  // Verhindert das erneute Senden
+  }
 
-// Speichern der Nachricht, wenn sie nicht bereits existiert
-if (!messages.find(msg => msg.id === id)) {
-  messages.push(payload);
-  if (messages.length > 50) messages.shift();
-}
+  try {
+    const response = await fetch('https://br-cke.onrender.com/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-});  // <-- Diese Klammer schließt den messageCreate-Event-Listener
+    // Prüfen, ob die Nachricht erfolgreich gesendet wurde
+    if (!response.ok) {
+      console.error(`Fehler beim Senden der Nachricht: ${response.statusText}`);
+    } else {
+      console.log('Nachricht erfolgreich gesendet.');
+    }
+  } catch (error) {
+    console.error('Fehler beim Senden der Nachricht:', error);
+  }
+
+  // Speichern der Nachricht, wenn sie nicht bereits existiert
+  if (!existingMessage) {
+    messages.push(payload);
+    if (messages.length > 50) messages.shift();
+  }
+});
 
 client.login(BOT_TOKEN);
 
