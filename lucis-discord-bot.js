@@ -108,8 +108,8 @@ const emojiMap = {
 client.on('messageCreate', async (message) => {
   if (message.author.id === client.user.id || message.webhookId) return;
 
-  // Wir wollen keine Nachrichten, die direkt von Discord zum Webchat gehen. Wir speichern und senden nur Nachrichten von der Website.
-  if (!message.content.includes("http://lucis.family")) return; // Prüfe, ob die Nachricht von der Website kam. Anpassen nach Bedarf.
+   // Verhindern, dass Nachrichten, die von einem anderen Bot oder einem Webchat stammen, verarbeitet werden
+  if (message.reference) return;  // Nachricht hat eine Referenz (wurde vom Webchat gesendet)
   
   const member = message.member;
   const roles = member?.roles?.cache || [];
