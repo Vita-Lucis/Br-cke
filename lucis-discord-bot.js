@@ -1,4 +1,3 @@
-// lucis-discord-bot.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -11,9 +10,13 @@ const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
 const app = express();
 const PORT = process.env.PORT || 3000;
 let messages = [];
+let userLastMessageTime = {}; // Speichert die Zeit der letzten Nachricht für jeden Benutzer
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// Spam Timeout (z.B. 3 Sekunden)
+const SPAM_TIMEOUT = 3000; // in Millisekunden
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
@@ -22,6 +25,20 @@ app.post('/send', async (req, res) => {
   if (sender === 'Anonym') {
     try {
       const channel = client.channels.cache.get(CHANNEL_ID);
+
+      // Verhindert Spam: Überprüft, ob der Benutzer zu schnell hintereinander Nachrichten sendet
+      const currentTime = Date.now();
+      const lastTime = userLastMessageTime[sender] || 0;
+
+      if (currentTime - lastTime < SPAM_TIMEOUT) {
+        console.log(`Spam erkannt: Benutzer ${sender} hat zu schnell eine Nachricht gesendet.`);
+        return res.sendStatus(429); // HTTP 429 Too Many Requests
+      }
+
+      // Speichert die Zeit der letzten Nachricht
+      userLastMessageTime[sender] = currentTime;
+
+      // Sende die Nachricht an Discord
       await channel.send(message); // Nur die Nachricht senden
     } catch (err) {
       console.error('Discord Send Error:', err);
