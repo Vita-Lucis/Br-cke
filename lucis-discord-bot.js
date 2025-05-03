@@ -11,7 +11,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let messages = [];
 let userMessageCount = {}; // Zählt, wie oft der Benutzer dieselbe Nachricht gesendet hat
-let userMessageTime = {};  // Speichert die Zeitstempel der letzten gesendeten Nachricht
 let userTimeout = {};      // Speichert die Timeout-Informationen für Benutzer
 const TIMEOUT_DURATION = 60000; // Timeout-Dauer in Millisekunden (1 Minute)
 const SPAM_THRESHOLD = 3; // Anzahl der Wiederholungen, um den Benutzer zu timeouten
@@ -34,7 +33,7 @@ app.post('/send', async (req, res) => {
     return res.status(403).send('Du bist für 1 Minute gesperrt.');
   }
 
-  // Verhindern von Spam (3x dieselbe Nachricht innerhalb eines beliebigen Zeitrahmens)
+  // Verhindern von Spam (3x dieselbe Nachricht)
   if (sender !== 'Anonym') {
     const currentTime = Date.now();
     const messageCount = userMessageCount[sender] || {};
@@ -50,7 +49,7 @@ app.post('/send', async (req, res) => {
       return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
     }
 
-    // Speichern des Zeitstempels der letzten Nachricht
+    // Speichern des Zählers der letzten Nachricht
     userMessageCount[sender] = messageCount;
   }
 
