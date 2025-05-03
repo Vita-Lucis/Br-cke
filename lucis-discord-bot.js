@@ -19,6 +19,28 @@ const LINK_REGEX = /https?:\/\/[^\s]+/; // RegEx, um HTTP/HTTPS-Links zu erkenne
 app.use(cors());
 app.use(bodyParser.json());
 
+// Funktion zur Überprüfung und zum Setzen des Timeout
+function checkSpam(sender, message) {
+  const currentTime = Date.now();
+  if (!userMessageCount[sender]) {
+    userMessageCount[sender] = {}; // Initialisiere den Zähler, falls er noch nicht existiert
+  }
+
+  if (!userMessageCount[sender][message]) {
+    userMessageCount[sender][message] = 0; // Initialisiere den Zähler für die Nachricht
+  }
+
+  userMessageCount[sender][message] += 1; // Erhöhe den Zähler für die Nachricht
+
+  if (userMessageCount[sender][message] >= SPAM_THRESHOLD) {
+    userTimeout[sender] = currentTime; // Sperre den Benutzer
+    userMessageCount[sender] = {}; // Setze die Zählung zurück
+    return true; // Benutzer wurde gesperrt
+  }
+
+  return false; // Keine Sperre
+}
+
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
@@ -33,24 +55,9 @@ app.post('/send', async (req, res) => {
     return res.status(403).send('Du bist für 1 Minute gesperrt.');
   }
 
-  // Verhindern von Spam (3x dieselbe Nachricht)
-  if (sender !== 'Anonym') {
-    const currentTime = Date.now();
-    const messageCount = userMessageCount[sender] || {};
-
-    // Zählt, wie oft der Benutzer dieselbe Nachricht sendet
-    messageCount[message] = (messageCount[message] || 0) + 1;
-
-    // Wenn die Nachricht 3x gesendet wurde, blockiere den Benutzer
-    if (messageCount[message] >= SPAM_THRESHOLD) {
-      // Timeout den Benutzer für 1 Minute
-      userTimeout[sender] = currentTime; // Setze den Timeout
-      userMessageCount[sender] = {}; // Zurücksetzen der Zählung
-      return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
-    }
-
-    // Speichern des Zählers der letzten Nachricht
-    userMessageCount[sender] = messageCount;
+  // Überprüfen, ob der Benutzer die gleiche Nachricht zu oft gesendet hat
+  if (checkSpam(sender, message)) {
+    return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
   }
 
   try {
