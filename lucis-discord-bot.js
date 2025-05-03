@@ -22,8 +22,6 @@ const LINK_REGEX = /https?:\/\/[^\s]+/; // RegEx, um HTTP/HTTPS-Links zu erkenne
 app.use(cors());
 app.use(bodyParser.json());
 
-// Spam Timeout (z.B. 2 Sekunden)
-const SPAM_TIMEOUT = 2000; // in Millisekunden
 
 // Send message from website to Discord
 app.post('/send', async (req, res) => {
@@ -67,17 +65,7 @@ app.post('/send', async (req, res) => {
   try {
     const channel = client.channels.cache.get(CHANNEL_ID);
 
-    // Verhindert Spam: Überprüft, ob der Benutzer zu schnell hintereinander Nachrichten sendet
-    const currentTime = Date.now();
-    const lastTime = userLastMessageTime[sender] || 0;
-
-    if (currentTime - lastTime < SPAM_TIMEOUT) {
-      console.log(`Spam erkannt: Benutzer ${sender} hat zu schnell eine Nachricht gesendet.`);
-      return res.sendStatus(429); // HTTP 429 Too Many Requests
-    }
-
-    // Speichert die Zeit der letzten Nachricht
-    userLastMessageTime[sender] = currentTime;
+   
 
     // Sende die Nachricht an Discord
     await channel.send(message); // Nur die Nachricht senden
