@@ -1,3 +1,4 @@
+// lucis-discord-bot.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
@@ -10,14 +11,18 @@ const CHANNEL_ID = process.env.CHANNEL_ID || '1367210444585963570';
 const app = express();
 const PORT = process.env.PORT || 3000;
 let messages = [];
+
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// RegEx zur Erkennung von externen Links
+const LINK_REGEX = /https?:\/\/[^\s]+/;
+
 let userMessageCount = {}; // Zählt, wie oft der Benutzer dieselbe Nachricht gesendet hat
 let userTimeout = {};      // Speichert die Timeout-Informationen für Benutzer
 const TIMEOUT_DURATION = 60000; // Timeout-Dauer in Millisekunden (1 Minute)
 const SPAM_THRESHOLD = 3; // Anzahl der Wiederholungen, um den Benutzer zu timeouten
-const LINK_REGEX = /https?:\/\/[^\s]+/; // RegEx, um HTTP/HTTPS-Links zu erkennen
-
-app.use(cors());
-app.use(bodyParser.json());
 
 // Funktion zur Überprüfung und zum Setzen des Timeout
 function checkSpam(sender, message) {
@@ -45,9 +50,6 @@ function checkSpam(sender, message) {
 app.post('/send', async (req, res) => {
   const { sender, message, role, roleColor, id } = req.body;
 
-  // Protokolliere empfangene Nachricht
-  console.log(`Nachricht empfangen von ${sender}: ${message} mit ID: ${id}`);
-
   // Überprüfen, ob die Nachricht einen externen Link enthält
   if (LINK_REGEX.test(message)) {
     return res.status(400).send('Externe Links sind verboten.'); // Nachricht blockieren, wenn ein Link enthalten ist
@@ -63,16 +65,15 @@ app.post('/send', async (req, res) => {
     return res.status(429).send('Du hast zu oft die gleiche Nachricht gesendet. Du bist für 1 Minute gesperrt.');
   }
 
-  try {
-    const channel = client.channels.cache.get(CHANNEL_ID);
-    // Sende die Nachricht an Discord
-    await channel.send(message);
-    console.log(`Nachricht erfolgreich an Discord gesendet: ${message}`);
-  } catch (err) {
-    console.error('Discord Send Error:', err);
+  if (sender === 'Anonym') {
+    try {
+      const channel = client.channels.cache.get(CHANNEL_ID);
+      await channel.send(message); // Nur die Nachricht senden
+    } catch (err) {
+      console.error('Discord Send Error:', err);
+    }
   }
 
-  // Speichern der Nachricht und ihrer ID
   if (!messages.find(msg => msg.id === id)) {
     messages.push({ sender, message, role: role || '🖤', roleColor: roleColor || '#2f2f2f', id });
     if (messages.length > 50) messages.shift();
@@ -110,14 +111,13 @@ const emojiMap = {
 };
 
 client.on('messageCreate', async (message) => {
-  // Ignoriere Nachrichten, die vom Bot selbst oder von Webhooks stammen
   if (message.author.id === client.user.id || message.webhookId) return;
-
-  // Protokolliere die empfangene Nachricht
-  console.log(`Nachricht erhalten: ${message.content}`);
-
-  // Verhindern, dass Nachrichten, die von einem anderen Bot oder Webchat stammen, verarbeitet werden
-  if (message.reference) return;  // Nachricht hat eine Referenz (wurde vom Webchat gesendet)
+  
+   // Überprüfen, ob die Nachricht einen externen Link enthält
+  if (LINK_REGEX.test(message.content)) {
+    console.log('Externer Link erkannt, Nachricht wird ignoriert.');
+    return; // Blockiert Nachrichten mit externen Links
+  }
   
   const member = message.member;
   const roles = member?.roles?.cache || [];
@@ -141,39 +141,23 @@ client.on('messageCreate', async (message) => {
     role: roleEmoji,
     roleColor: roleColor,
     message: message.content,
-    id,
-    reference: true
+    id
   };
-
-  // Protokolliere die Nachricht, bevor sie gesendet wird
-  console.log(`Nachricht wird gesendet: ${JSON.stringify(payload)}`);
 
   // Verhindern, dass eine Nachricht wiederholt gesendet wird
   const existingMessage = messages.find(msg => msg.id === id);
   if (existingMessage) {
     console.log(`Nachricht mit ID ${id} wurde bereits gesendet.`);
-    return;  // Verhindert das erneute Senden
+    return; // Verhindert das erneute Senden
   }
+  
+  await fetch('https://br-cke.onrender.com/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
 
-  try {
-    const response = await fetch('https://br-cke.onrender.com/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    // Prüfen, ob die Nachricht erfolgreich gesendet wurde
-    if (!response.ok) {
-      console.error(`Fehler beim Senden der Nachricht: ${response.statusText}`);
-    } else {
-      console.log('Nachricht erfolgreich gesendet.');
-    }
-  } catch (error) {
-    console.error('Fehler beim Senden der Nachricht:', error);
-  }
-
-  // Speichern der Nachricht, wenn sie nicht bereits existiert
-  if (!existingMessage) {
+  if (!messages.find(msg => msg.id === id)) {
     messages.push(payload);
     if (messages.length > 50) messages.shift();
   }
